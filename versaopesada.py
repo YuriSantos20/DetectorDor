@@ -1,33 +1,36 @@
 import cv2
 import time
+import torch
+import requests
+import numpy as np
 from PIL import Image
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
-import torch
 
-print("🟢 Iniciando sistema com BLIP-2")
+print("🟢 Iniciando sistema com BLIP-2 + ESP32-CAM")
 
-# Carregar modelo e processador BLIP-2 (pesado!)
+# Carregar modelo e processador BLIP-2
 processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
 model = Blip2ForConditionalGeneration.from_pretrained(
     "Salesforce/blip2-opt-2.7b",
-    device_map="auto",  # Tenta usar GPU automaticamente
+    device_map="auto",
     torch_dtype=torch.float16
 )
 
-# Função para capturar imagem
-def capturar_imagem():
-    cam = cv2.VideoCapture(0)
-    time.sleep(2)
-    ret, frame = cam.read()
-    if not ret:
-        print("❌ Erro ao acessar a webcam.")
-        cam.release()
+# Captura de imagem via ESP32-CAM
+def capturar_imagem_esp32():
+    url = "http://192.168.1.100/capture"  # 🔁 Troque pelo IP da sua ESP32-CAM
+    try:
+        print("🌐 Capturando imagem da ESP32-CAM...")
+        response = requests.get(url, timeout=5)
+        img_array = np.array(bytearray(response.content), dtype=np.uint8)
+        frame = cv2.imdecode(img_array, -1)
+        img_path = "frame.jpg"
+        cv2.imwrite(img_path, frame)
+        print("📷 Imagem salva:", img_path)
+        return img_path
+    except Exception as e:
+        print("❌ Erro ao capturar imagem da ESP32:", e)
         return None
-    img_path = "frame.jpg"
-    cv2.imwrite(img_path, frame)
-    cam.release()
-    print("📷 Imagem salva:", img_path)
-    return img_path
 
 # Função de análise com perguntas
 def detectar_dor_blip2(imagem_path):
@@ -53,12 +56,15 @@ def detectar_dor_blip2(imagem_path):
     
     print("✅ Aparentemente, a pessoa está bem.")
 
-# Execução
-print("📸 Capturando imagem...")
-imagem = capturar_imagem()
+# ------------------
+# EXECUÇÃO PRINCIPAL
+# ------------------
+
+print("📸 Capturando imagem da ESP32-CAM...")
+imagem = capturar_imagem_esp32()
 if imagem:
     detectar_dor_blip2(imagem)
 
 # 📦 Instalar os pacotes necessários (no terminal):
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-# pip install transformers opencv-python pillow
+# pip install transformers opencv-python pillow requests

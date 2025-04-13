@@ -3,7 +3,7 @@ import time
 from PIL import Image
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
-print("🟢 Programa iniciado (modo leve com simulação de dor)")
+print("🟢 Programa iniciado")
 
 # Carregar o modelo leve
 processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
